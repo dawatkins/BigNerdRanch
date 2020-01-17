@@ -8,11 +8,14 @@ import android.widget.ImageButton
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.ViewModelProviders
+import androidx.lifecycle.ViewModelProviders.*
 import kotlin.math.round
 import kotlin.math.truncate
 
 
-private const val TAG = "MainActivity"
+const val TAG = "MainActivity"
 
 class MainActivity : AppCompatActivity() {
     private lateinit var trueButton: Button
@@ -21,16 +24,10 @@ class MainActivity : AppCompatActivity() {
     private lateinit var prevButton: ImageButton
     private lateinit var questionTextView: TextView
     private var totalCorrect = 0.0
-    private var currentIndex = 0
 
-    private val questionBank = listOf(
-        Question(R.string.question_australia, true, 0),
-        Question(R.string.question_oceans, true, 0),
-        Question(R.string.question_mideast, false, 0),
-        Question(R.string.question_africa, false, 0),
-        Question(R.string.question_americas, true, 0),
-        Question(R.string.question_asia, true, 0)
-    )
+    private val quizViewModel: QuizViewModel by lazy{
+        of(this).get(QuizViewModel::class.java)
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -38,6 +35,11 @@ class MainActivity : AppCompatActivity() {
         Log.d(TAG, "onCreate(Bundle?) called")
 
         setContentView(R.layout.activity_main)
+
+//        val provider: ViewModelProvider = ViewModelProviders.of(this)
+//        val quizViewModel = provider.get(QuizViewModel::class.java)
+//        Log.d(TAG, "Got a QuizViewModel: $quizViewModel")
+
 
         trueButton = findViewById(R.id.true_button)
         falseButton = findViewById(R.id.false_button)
@@ -57,25 +59,26 @@ class MainActivity : AppCompatActivity() {
             }
 
         nextButton.setOnClickListener {
-            currentIndex = (currentIndex + 1) % questionBank.size
-            if(currentIndex != 0)
+            quizViewModel.moveToNext()
+            if(quizViewModel.currentIndex != 0)
                 updateQuestion()
             else
                 displayGrade()
+            updateQuestion()
             falseButton.isClickable = true
             trueButton.isClickable = true
         }
         prevButton.setOnClickListener{
-            currentIndex = (currentIndex - 1) % questionBank.size
-            if (currentIndex == -1)
-                currentIndex = 0
+            quizViewModel.moveToPrevious()
+            if (quizViewModel.currentIndex == -1)
+                quizViewModel.moveToNext()
             updateQuestion()
             falseButton.isClickable = true
             trueButton.isClickable = true
         }
 
         questionTextView.setOnClickListener{
-            currentIndex = (currentIndex + 1) % questionBank.size
+            quizViewModel.moveToNext()
             updateQuestion()
         }
         updateQuestion()
@@ -108,31 +111,32 @@ class MainActivity : AppCompatActivity() {
 
 
     private fun updateQuestion() {
-        val questionTextResId = questionBank[currentIndex].textResId
+//        val questionTextResId = questionBank[currentIndex].textResId
+        val questionTextResId = quizViewModel.currentQuestionText
         questionTextView.setText(questionTextResId)
     }
 
     private fun checkAnswer(userAnswer: Boolean) {
-        val correctAnswer = questionBank[currentIndex].answer
+//        val correctAnswer = questionBank[currentIndex].answer
+        val correctAnswer = quizViewModel.currentQuestionAnswer
         val messageResId: String
 
         if(userAnswer == correctAnswer){
             messageResId = "Correct!"
-            questionBank[currentIndex].userAnswer(1)
-            //totalCorrect += 1
+            quizViewModel.setUserAnswer(1)
         }else{
             messageResId = "Incorrect!"
-            questionBank[currentIndex].userAnswer(0)
-
+            quizViewModel.setUserAnswer(0)
         }
 
         Toast.makeText(this, messageResId, Toast.LENGTH_SHORT).show()
     }
 
     private fun displayGrade() {
-        val questions = questionBank.size
-        //val gradePercent: Double
-        for(answers in questionBank){this.totalCorrect += answers.userAnswer}
+        val questions = quizViewModel.size()
+//        val questionBank = quizViewModel.getQuestionBank()
+//        for(answers in questionBank){this.totalCorrect += answers.userAnswer}
+        totalCorrect = quizViewModel.correctAnswers()
         var gradePercent =((totalCorrect / questions) * 100)
         gradePercent = gradePercent.round(2)
         val alertDialog = AlertDialog.Builder(this)
@@ -152,9 +156,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun resetValues(){
-        currentIndex = 0
+//        currentIndex = 0
         totalCorrect = 0.0
-        for(reset in questionBank){reset.userAnswer(0)}
+//        for(reset in questionBank){reset.userAnswer(0)}
     }
 
 }
