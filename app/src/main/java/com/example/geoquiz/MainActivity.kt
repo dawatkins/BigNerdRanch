@@ -3,12 +3,13 @@ package com.example.geoquiz
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.util.Log
-import android.view.Gravity
-import android.view.View
 import android.widget.Button
 import android.widget.ImageButton
 import android.widget.TextView
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
+import kotlin.math.round
+import kotlin.math.truncate
 
 
 private const val TAG = "MainActivity"
@@ -19,29 +20,17 @@ class MainActivity : AppCompatActivity() {
     private lateinit var nextButton: ImageButton
     private lateinit var prevButton: ImageButton
     private lateinit var questionTextView: TextView
-
-    private val questionBank = listOf(
-        Question(R.string.question_australia, true),
-        Question(R.string.question_oceans, true),
-        Question(R.string.question_mideast, false),
-        Question(R.string.question_africa, false),
-        Question(R.string.question_americas, true),
-        Question(R.string.question_asia, true)
-    )
-
+    private var totalCorrect = 0.0
     private var currentIndex = 0
 
-    private fun checkAnswer(userAnswer: Boolean) {
-        val correctAnswer = questionBank[currentIndex].answer
-
-        val messageResId = if (userAnswer == correctAnswer) {
-            R.string.correct_toast
-        } else {
-            R.string.incorrect_toast
-        }
-        Toast.makeText(this, messageResId, Toast.LENGTH_SHORT).show()
-    }
-
+    private val questionBank = listOf(
+        Question(R.string.question_australia, true, 0),
+        Question(R.string.question_oceans, true, 0),
+        Question(R.string.question_mideast, false, 0),
+        Question(R.string.question_africa, false, 0),
+        Question(R.string.question_americas, true, 0),
+        Question(R.string.question_asia, true, 0)
+    )
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -56,37 +45,39 @@ class MainActivity : AppCompatActivity() {
         prevButton = findViewById(R.id.previous_button)
         questionTextView = findViewById(R.id.question_text_view)
 
-//        val trueToast = Toast.makeText(this,R.string.correct_toast, Toast.LENGTH_SHORT)
-//        trueToast.setGravity(Gravity.TOP, 0, 250)
-//        val falseToast = Toast.makeText(this,R.string.incorrect_toast, Toast.LENGTH_SHORT)
-//        falseToast.setGravity(Gravity.TOP, 0, 250)
         trueButton.setOnClickListener {
             checkAnswer(true)
-            trueButton.isClickable = false}
+            trueButton.isClickable = false
+            falseButton.isClickable = false
+        }
         falseButton.setOnClickListener {
             checkAnswer(false)
+            falseButton.isClickable = false
+            trueButton.isClickable = false
             }
 
         nextButton.setOnClickListener {
             currentIndex = (currentIndex + 1) % questionBank.size
-            updateQuestion()
-//            val questionTextResId = questionBank[currentIndex].textResId
-//            questionTextView.setText(questionTextResId)
+            if(currentIndex != 0)
+                updateQuestion()
+            else
+                displayGrade()
+            falseButton.isClickable = true
+            trueButton.isClickable = true
         }
         prevButton.setOnClickListener{
             currentIndex = (currentIndex - 1) % questionBank.size
             if (currentIndex == -1)
-                currentIndex = questionBank.size - 1
+                currentIndex = 0
             updateQuestion()
+            falseButton.isClickable = true
+            trueButton.isClickable = true
         }
 
         questionTextView.setOnClickListener{
             currentIndex = (currentIndex + 1) % questionBank.size
             updateQuestion()
         }
-
-//        val questionTextResId = questionBank[currentIndex].textResId
-//        questionTextView.setText(questionTextResId)
         updateQuestion()
     }// on create
 
@@ -121,5 +112,49 @@ class MainActivity : AppCompatActivity() {
         questionTextView.setText(questionTextResId)
     }
 
+    private fun checkAnswer(userAnswer: Boolean) {
+        val correctAnswer = questionBank[currentIndex].answer
+        val messageResId: String
+
+        if(userAnswer == correctAnswer){
+            messageResId = "Correct!"
+            questionBank[currentIndex].userAnswer(1)
+            //totalCorrect += 1
+        }else{
+            messageResId = "Incorrect!"
+            questionBank[currentIndex].userAnswer(0)
+
+        }
+
+        Toast.makeText(this, messageResId, Toast.LENGTH_SHORT).show()
+    }
+
+    private fun displayGrade() {
+        val questions = questionBank.size
+        //val gradePercent: Double
+        for(answers in questionBank){this.totalCorrect += answers.userAnswer}
+        var gradePercent =((totalCorrect / questions) * 100)
+        gradePercent = gradePercent.round(2)
+        val alertDialog = AlertDialog.Builder(this)
+        alertDialog.setTitle("Quiz Grade")
+            .setMessage("You got ${totalCorrect.toInt()} correct out of $questions.\nYour grade was: $gradePercent %")
+            .create()
+            .show()
+
+        resetValues()
+        updateQuestion()
+    }
+
+    private fun Double.round(decimals:Int) : Double{
+        var multiplier = 1.0
+        repeat(decimals) {multiplier *= 10}
+        return round(this * multiplier) / multiplier
+    }
+
+    private fun resetValues(){
+        currentIndex = 0
+        totalCorrect = 0.0
+        for(reset in questionBank){reset.userAnswer(0)}
+    }
 
 }
