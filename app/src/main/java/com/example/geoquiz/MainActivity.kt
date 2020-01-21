@@ -8,12 +8,8 @@ import android.widget.ImageButton
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
-import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.ViewModelProviders
 import androidx.lifecycle.ViewModelProviders.*
 import kotlin.math.round
-import kotlin.math.truncate
-
 
 const val TAG = "MainActivity"
 
@@ -35,11 +31,6 @@ class MainActivity : AppCompatActivity() {
         Log.d(TAG, "onCreate(Bundle?) called")
 
         setContentView(R.layout.activity_main)
-
-//        val provider: ViewModelProvider = ViewModelProviders.of(this)
-//        val quizViewModel = provider.get(QuizViewModel::class.java)
-//        Log.d(TAG, "Got a QuizViewModel: $quizViewModel")
-
 
         trueButton = findViewById(R.id.true_button)
         falseButton = findViewById(R.id.false_button)
@@ -111,13 +102,11 @@ class MainActivity : AppCompatActivity() {
 
 
     private fun updateQuestion() {
-//        val questionTextResId = questionBank[currentIndex].textResId
         val questionTextResId = quizViewModel.currentQuestionText
         questionTextView.setText(questionTextResId)
     }
 
     private fun checkAnswer(userAnswer: Boolean) {
-//        val correctAnswer = questionBank[currentIndex].answer
         val correctAnswer = quizViewModel.currentQuestionAnswer
         val messageResId: String
 
@@ -134,8 +123,6 @@ class MainActivity : AppCompatActivity() {
 
     private fun displayGrade() {
         val questions = quizViewModel.size()
-//        val questionBank = quizViewModel.getQuestionBank()
-//        for(answers in questionBank){this.totalCorrect += answers.userAnswer}
         totalCorrect = quizViewModel.correctAnswers()
         var gradePercent =((totalCorrect / questions) * 100)
         gradePercent = gradePercent.round(2)
@@ -156,9 +143,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun resetValues(){
-//        currentIndex = 0
         totalCorrect = 0.0
-//        for(reset in questionBank){reset.userAnswer(0)}
     }
 
 }
