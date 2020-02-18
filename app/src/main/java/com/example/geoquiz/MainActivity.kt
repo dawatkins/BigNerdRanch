@@ -153,6 +153,12 @@ class MainActivity : AppCompatActivity() {
             else -> R.string.incorrect_toast
         }
 
+        if(messageResId == R.string.correct_toast){
+            quizViewModel.setUserAnswer(1)
+        } else{
+            quizViewModel.setUserAnswer(0)
+        }
+
         Toast.makeText(this, messageResId, Toast.LENGTH_SHORT).show()
     }
 
