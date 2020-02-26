@@ -1,4 +1,4 @@
-package us.bndshop.geoquiz.api
+package com.example.geoquiz.api
 
 import androidx.annotation.VisibleForTesting
 import com.example.geoquiz.api.ApiService

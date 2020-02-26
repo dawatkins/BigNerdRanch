@@ -1,119 +1,99 @@
 package com.example.geoquiz
 
 import android.app.Activity
-import android.app.ActivityOptions
 import android.content.Intent
-import android.os.Build
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.text.Html
 import android.util.Log
-import android.widget.Button
-import android.widget.ImageButton
-import android.widget.TextView
+import android.view.View
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
-import androidx.lifecycle.ViewModelProviders.*
+import androidx.lifecycle.Observer
 import com.example.geoquiz.api.ApiService
 import com.example.geoquiz.api.model.ApiQuestion
-import com.example.geoquiz.api.model.QuestionList
 import kotlinx.android.synthetic.main.activity_main.*
-import retrofit2.Call
-import retrofit2.Callback
-import retrofit2.Response
-import us.bndshop.geoquiz.api.RestAPIClient
+import com.example.geoquiz.api.RestAPIClient
+import java.util.*
 import kotlin.math.round
 
 private const val TAG = "MainActivity"
 private const val KEY_INDEX = "index"
 private const val REQUEST_CODE_CHEAT = 0
+private const val NUMBER_OF_QUESTIONS = 10
 
 class MainActivity : AppCompatActivity() {
-    private lateinit var trueButton: Button
-    private lateinit var falseButton: Button
-    private lateinit var nextButton: ImageButton
-    private lateinit var prevButton: ImageButton
-    private lateinit var questionTextView: TextView
-    private lateinit var cheatButton: Button
-    private var totalCorrect = 0.0
 
-
-    private var questions = mutableListOf<ApiQuestion>()
-    private var answer = false
-    private var correctAnswer = true
-    private var question: ApiQuestion? = null
-    private var index = 0
-
-    private val quizViewModel: QuizViewModel by lazy {
-        of(this).get(QuizViewModel::class.java)
-    }
+    private lateinit var quizViewModel: QuizViewModel
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         apiService = apiClient.getApiService()
+        quizViewModel = QuizViewModel(apiService)
 
         Log.d(TAG, "onCreate(Bundle?) called")
 
         if (savedInstanceState != null) {
-            totalCorrect = savedInstanceState.getDouble("CORRECT")
-            index = savedInstanceState.getInt("INDEX")
-            answer = savedInstanceState.getBoolean("ANSWER")
-            questions = savedInstanceState.getParcelableArrayList<ApiQuestion>("QUESTION_LIST")?.toMutableList()!!
-            setupQuestion()
-        } else {
-            getQuestions()
-        }
+            quizViewModel.updateTotalCorrect(savedInstanceState.getInt("CORRECT"))
+            quizViewModel.updateIndex(savedInstanceState.getInt("INDEX"))
 
+//            questions = savedInstanceState.getParcelableArrayList<ApiQuestion>("QUESTION_LIST")?.toMutableList()!!
+            quizViewModel.setupQuestion()
+        } else {
+            quizViewModel.getQuestions()
+        }
 
         val currentIndex = savedInstanceState?.getInt(KEY_INDEX, 0) ?: 0
-        quizViewModel.currentIndex = currentIndex
+        quizViewModel.updateIndex(currentIndex)
 
-        trueButton = findViewById(R.id.true_button)
-        falseButton = findViewById(R.id.false_button)
-        nextButton = findViewById(R.id.next_button)
-        prevButton = findViewById(R.id.previous_button)
-        questionTextView = findViewById(R.id.question_text_view)
-        cheatButton = findViewById(R.id.cheat_button)
 
-        trueButton.setOnClickListener {
-            checkAnswer(true)
-            trueButton.isClickable = false
-            falseButton.isClickable = false
-        }
-        falseButton.setOnClickListener {
-            checkAnswer(false)
-            falseButton.isClickable = false
-            trueButton.isClickable = false
+        quizViewModel.viewState.observe(this, Observer<QuizViewModel.QuizViewState> {
+            render(quizViewModel.currentViewState())
+        })
+
+        true_button.setOnClickListener {
+            val messageResId = quizViewModel.checkAnswer(true, quizViewModel.currentViewState().correctAnswer)
+            Toast.makeText(this, messageResId, Toast.LENGTH_SHORT).show()
+            true_button.isClickable = false
+            false_button.isClickable = false
+
         }
 
-        nextButton.setOnClickListener {
-            if (index < questions.size - 1) {
-                getQuestion(index++)
-                setupQuestion()
+        false_button.setOnClickListener {
+            val messageResId = quizViewModel.checkAnswer(false, quizViewModel.currentViewState().correctAnswer)
+            Toast.makeText(this, messageResId, Toast.LENGTH_SHORT).show()
+            false_button.isClickable = false
+            true_button.isClickable = false
+        }
+
+        next_button.setOnClickListener {
+            if (quizViewModel.currentViewState().index < quizViewModel.currentViewState().questions.size - 1) {
+                quizViewModel.incIndex()
             } else {
                 displayGrade()
-                resetValues()
+                quizViewModel.resetProgress()
             }
-            setupQuestion()
-            falseButton.isClickable = true
-            trueButton.isClickable = true
+            false_button.isClickable = true
+            true_button.isClickable = true
         }
-        prevButton.setOnClickListener {
-            if (index > 0) {
-                getQuestion(index--)
-                setupQuestion()
+
+        previous_button.setOnClickListener {
+            if (quizViewModel.currentViewState().index > 0) {
+                quizViewModel.decIndex()
+                quizViewModel.setupQuestion()
+                renderResult()
             } else {
                 Toast.makeText(applicationContext, "First question in the list.", Toast.LENGTH_LONG)
                     .show()
             }
-            falseButton.isClickable = true
-            trueButton.isClickable = true
+            false_button.isClickable = false
+            true_button.isClickable = false
         }
 
 
-        cheatButton.setOnClickListener { view ->
-            val answer = question?.correctAnswer
+        cheat_button.setOnClickListener {
+            val answer = quizViewModel.currentViewState().correctAnswer
             val intent = CheatActivity.newIntent(this@MainActivity, answer)
             startActivity(intent)
         }
@@ -154,8 +134,8 @@ class MainActivity : AppCompatActivity() {
     override fun onSaveInstanceState(savedInstanceState: Bundle) {
         super.onSaveInstanceState(savedInstanceState)
         Log.i(TAG, "onSaveInstanceState")
-        savedInstanceState.putInt(KEY_INDEX, quizViewModel.currentIndex)
-        savedInstanceState?.putDouble("CORRECT", totalCorrect)
+        savedInstanceState.putInt(KEY_INDEX, quizViewModel.currentViewState().index)
+        savedInstanceState?.putInt("CORRECT", quizViewModel.currentViewState().totalCorrect)
     }
 
     override fun onStop() {
@@ -168,100 +148,18 @@ class MainActivity : AppCompatActivity() {
         Log.d(TAG, "onDestroy() called")
     }
 
-
-    private fun updateQuestion() {
-        questionTextView.text = question?.question
-    }
-
-
-
-
-    private fun checkAnswer(userAnswer: Boolean) {
-//        val correctAnswer = quizViewModel.currentQuestionAnswer
-        val messageResId = when {
-            quizViewModel.isCheater -> R.string.judgment_toast
-            userAnswer == correctAnswer -> R.string.correct_toast
-            else -> R.string.incorrect_toast
-        }
-
-        if (messageResId == R.string.correct_toast)
-            totalCorrect++
-
-
-        Toast.makeText(this, messageResId, Toast.LENGTH_SHORT).show()
-    }
-
     private fun displayGrade() {
-//        val questions = quizViewModel.size()
-//        totalCorrect = quizViewModel.correctAnswers()
-        var gradePercent = ((totalCorrect / NUMBER_OF_QUESTIONS) * 100)
-        gradePercent = gradePercent.round(2)
+        val totalCorrect = quizViewModel.currentViewState().totalCorrect
+        val questionsSize = quizViewModel.currentViewState().questions.size
+        val gradePercent = ((totalCorrect * 100) / questionsSize)
         val alertDialog = AlertDialog.Builder(this)
         alertDialog.setTitle("Quiz Grade")
-            .setMessage("You got ${totalCorrect.toInt()} correct out of $NUMBER_OF_QUESTIONS.\nYour grade was: $gradePercent %")
+            .setMessage("You got $totalCorrect correct out of $questionsSize.\nYour grade was: $gradePercent%")
             .create()
             .show()
 
-        resetValues()
-        setupQuestion()
-    }
-
-    private fun Double.round(decimals: Int): Double {
-        var multiplier = 1.0
-        repeat(decimals) { multiplier *= 10 }
-        return round(this * multiplier) / multiplier
-    }
-
-    private fun resetValues() {
-        totalCorrect = 0.0
-        index = 0
-    }
-
-    private fun setupQuestion() {
-        getQuestion(index)
-
-        correctAnswer = question!!.correctAnswer
-//        quizQuestionNumber.text = (index + 1).toString()
-        question_text_view.text = Html.fromHtml(question!!.question, 0)
-    }
-
-    private fun getQuestion(index: Int) {
-//        if (swipeRefresh.isRefreshing) {
-//            swipeRefresh.isRefreshing = false
-//            question = questions[index]
-//        } else {
-//            question = questions[index]
-//        }
-        question = questions[index]
-    }
-
-    private fun getQuestions() {
-        val fetchQuestionsList = apiService.getQuestions()
-
-        fetchQuestionsList.enqueue(
-            object : Callback<QuestionList> {
-                override fun onResponse(
-                    call: Call<QuestionList>,
-                    response: Response<QuestionList>
-                ) {
-                    if (response.isSuccessful) {
-                        onFetchQuestionsSuccess(response.body())
-                    }
-                }
-
-                override fun onFailure(call: Call<QuestionList>, t: Throwable) {
-                    Toast.makeText(applicationContext, "Error, item not found", Toast.LENGTH_LONG)
-                        .show()
-                }
-            }
-        )
-    }
-
-    private fun onFetchQuestionsSuccess(questionList: QuestionList?) {
-        questionList?.results?.forEach {
-            questions.add(it)
-        }
-        setupQuestion()
+        quizViewModel.resetProgress()
+        renderResult()
     }
 
     private fun showRefreshDialog() {
@@ -271,8 +169,7 @@ class MainActivity : AppCompatActivity() {
             .setMessage("Are you sure you would like to reload for new questions?")
             .setPositiveButton("Confirm") { _, _ ->
 //                swipeRefresh.isRefreshing = true
-                resetValues()
-                getQuestions()
+                quizViewModel.getQuestions()
             }
             .setNegativeButton("Cancel") { dialog, _ ->
                 dialog.dismiss()
@@ -281,10 +178,25 @@ class MainActivity : AppCompatActivity() {
             .create()
             .show()
     }
+    private fun render(viewState: QuizViewModel.QuizViewState) {
+        when(viewState.progressType) {
+            ProgressType.NotAsked -> {}
+            ProgressType.Loading -> {}
+            ProgressType.Result -> {renderResult()}
+            ProgressType.Error -> {renderError()}
+        }
+    }
+
+    private fun renderResult() {
+        quizViewModel.setupQuestion()
+        question_text_view.text = (Html.fromHtml(quizViewModel.currentViewState().question.question, Html.FROM_HTML_MODE_LEGACY))
+    }
+
+    private fun renderError(){ Toast.makeText(applicationContext, "Error, item not found", Toast.LENGTH_LONG).show() }
+
 
     companion object {
         private val TAG = MainActivity::class.java.simpleName
-        private const val NUMBER_OF_QUESTIONS = 10
         private val apiClient = RestAPIClient(getURL())
         private lateinit var apiService: ApiService
         private var instance = App()
@@ -293,7 +205,7 @@ class MainActivity : AppCompatActivity() {
             return instance
         }
 
-        fun getURL(): String {
+        private fun getURL(): String {
             return "https://opentdb.com"
         }
 

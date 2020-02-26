@@ -1,50 +1,174 @@
 package com.example.geoquiz
 
-import android.util.Log
+import android.text.Html
+import android.widget.Toast
+import androidx.annotation.StringRes
+import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
+import com.example.geoquiz.api.ApiService
+import com.example.geoquiz.api.model.ApiQuestion
+import com.example.geoquiz.api.model.QuestionList
+import retrofit2.Call
+import retrofit2.Callback
+import retrofit2.Response
 
-class QuizViewModel: ViewModel() {
+class QuizViewModel(val apiService: ApiService) : ViewModel() {
 
-    var currentIndex = 0
+    val viewState: MutableLiveData<QuizViewState> = MutableLiveData()
+
+    init {
+        viewState.value = QuizViewState(
+            progressType = ProgressType.NotAsked,
+            correctAnswer = true,
+            userAnswer = false,
+            questions = mutableListOf(),
+            question = ApiQuestion(),
+            index = 0,
+            totalCorrect = 0
+
+        )
+    }
+
+    fun currentViewState(): QuizViewState = viewState.value!!
+
     var isCheater = false
 
-//    private val questionBank = listOf(
-//        Question(R.string.question_australia, true, 0),
-//        Question(R.string.question_oceans, true, 0),
-//        Question(R.string.question_mideast, false, 0),
-//        Question(R.string.question_africa, false, 0),
-//        Question(R.string.question_americas, true, 0),
-//        Question(R.string.question_asia, true, 0)
-//    )
+    fun checkAnswer(userAnswer: Boolean, correctAnswer: Boolean): Int {
+        if (userAnswer == correctAnswer){
+            updateState(
+                currentViewState().copy(
+                    totalCorrect = currentViewState().totalCorrect + 1,
+                    progressType = ProgressType.Result
+                )
+            )
+            return R.string.correct_toast
+        } else {
+            return R.string.incorrect_toast
+        }
+    }
 
 
-//    fun correctAnswers(): Double{
-//        var totalCorrect = 0.0
-//        for(answers in questionBank){totalCorrect += answers.userAnswer}
-//        return totalCorrect
-//    }
-//
-//    val currentQuestionAnswer: Boolean
-//        get() = questionBank[currentIndex].answer
-//
-//    val currentQuestionText: Int
-//        get() = questionBank[currentIndex].textResId
-//
-//    val currentQuestionUserAnswer: Int
-//        get() = questionBank[currentIndex].userAnswer
-//
-//    fun setUserAnswer(answer: Int){
-//        questionBank[currentIndex].userAnswer(answer)
-//    }
-//
-//    fun moveToNext() {
-//        currentIndex = (currentIndex + 1) % questionBank.size
-//    }
-//
-//    fun moveToPrevious(){
-//        currentIndex = (currentIndex - 1) % questionBank.size
-//    }
-//    fun size(): Int{
-//        return questionBank.size
-//    }
+    fun getQuestions() {
+        val fetchQuestionsList = apiService.getQuestions()
+        updateState(
+            currentViewState().copy(
+                progressType = ProgressType.Loading
+            )
+        )
+        fetchQuestionsList.enqueue(
+            object : Callback<QuestionList> {
+                override fun onResponse(
+                    call: Call<QuestionList>,
+                    response: Response<QuestionList>
+                ) {
+                    if (response.isSuccessful) {
+                        onFetchQuestionsSuccess(response.body())
+                    }
+                }
+
+                override fun onFailure(call: Call<QuestionList>, t: Throwable) {
+                    updateState(
+                        currentViewState().copy(
+                            progressType = ProgressType.Error
+                        )
+                    )
+                }
+            }
+        )
+    }
+
+    fun onFetchQuestionsSuccess(questionList: QuestionList?) {
+        var questions: MutableList<ApiQuestion> = mutableListOf()
+
+        questionList?.results?.forEach {
+            questions.add(it)
+        }
+
+        updateState(
+            currentViewState().copy(
+                progressType = ProgressType.Result,
+                questions = questions
+            )
+        )
+        setupQuestion()
+    }
+
+    fun updateIndex(i: Int) {
+        updateState(
+            currentViewState().copy(
+                index = i
+            )
+        )
+    }
+
+    fun updateTotalCorrect(i: Int) {
+        updateState(
+            currentViewState().copy(
+                totalCorrect = i
+            )
+        )
+    }
+
+
+    fun incIndex() {
+        updateState(
+            currentViewState().copy(
+                index = currentViewState().index + 1,
+                progressType = ProgressType.Result
+            )
+        )
+    }
+
+    fun decIndex() {
+        updateState(
+            currentViewState().copy(
+                index = currentViewState().index - 1
+            )
+        )
+    }
+
+    fun setupQuestion() {
+        val question = getQuestion(currentViewState().index)
+        updateState(
+            currentViewState().copy(
+                question = question,
+                correctAnswer = question.correctAnswer,
+                progressType = ProgressType.NotAsked
+            )
+        )
+    }
+
+    private fun getQuestion(index: Int) = currentViewState().questions[index]
+
+    private fun updateState(newState: QuizViewState) {
+        viewState.value = currentViewState().copy(
+            progressType = newState.progressType,
+            correctAnswer = newState.correctAnswer,
+            userAnswer = newState.userAnswer,
+            question = newState.question,
+            questions = newState.questions,
+            totalCorrect = newState.totalCorrect,
+            index = newState.index
+        )
+    }
+
+    fun resetProgress(){
+        viewState.value = currentViewState().copy(
+            progressType = ProgressType.NotAsked,
+            totalCorrect = 0,
+            userAnswer = false,
+            index = 0
+        )
+    }
+
+    data class QuizViewState(
+        val progressType: ProgressType,
+        val correctAnswer: Boolean,
+        val userAnswer: Boolean,
+        val questions: MutableList<ApiQuestion>,
+        val question: ApiQuestion,
+        val index: Int,
+        val totalCorrect: Int
+    )
+
 }
