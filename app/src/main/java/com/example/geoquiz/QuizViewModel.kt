@@ -24,29 +24,38 @@ class QuizViewModel(val apiService: ApiService) : ViewModel() {
             questions = mutableListOf(),
             question = ApiQuestion(),
             index = 0,
-            totalCorrect = 0
+            totalCorrect = 0,
+            isCheater = false
 
         )
     }
 
     fun currentViewState(): QuizViewState = viewState.value!!
 
-    var isCheater = false
-
     fun checkAnswer(userAnswer: Boolean, correctAnswer: Boolean): Int {
-        if (userAnswer == correctAnswer){
-            updateState(
-                currentViewState().copy(
-                    totalCorrect = currentViewState().totalCorrect + 1,
-                    progressType = ProgressType.Result
-                )
-            )
-            return R.string.correct_toast
+        if(currentViewState().isCheater){
+            return R.string.judgment_toast
         } else {
-            return R.string.incorrect_toast
+            if (userAnswer == correctAnswer) {
+                updateState(
+                    currentViewState().copy(
+                        totalCorrect = currentViewState().totalCorrect + 1,
+                        progressType = ProgressType.Result
+                    )
+                )
+                return R.string.correct_toast
+            } else {
+                return R.string.incorrect_toast
+            }
         }
     }
-
+    fun userCheat(){
+        updateState(
+            currentViewState().copy(
+                isCheater = true
+            )
+        )
+    }
 
     fun getQuestions() {
         val fetchQuestionsList = apiService.getQuestions()
@@ -101,14 +110,14 @@ class QuizViewModel(val apiService: ApiService) : ViewModel() {
         )
     }
 
-    fun updateTotalCorrect(i: Int) {
+    fun updateState(index: Int, totalCorrect: Int, questions: MutableList<ApiQuestion>){
         updateState(
             currentViewState().copy(
-                totalCorrect = i
+                index = index,
+                totalCorrect = totalCorrect
             )
         )
     }
-
 
     fun incIndex() {
         updateState(
@@ -133,6 +142,7 @@ class QuizViewModel(val apiService: ApiService) : ViewModel() {
             currentViewState().copy(
                 question = question,
                 correctAnswer = question.correctAnswer,
+//                isCheater = false,
                 progressType = ProgressType.NotAsked
             )
         )
@@ -157,7 +167,8 @@ class QuizViewModel(val apiService: ApiService) : ViewModel() {
             progressType = ProgressType.NotAsked,
             totalCorrect = 0,
             userAnswer = false,
-            index = 0
+            index = 0,
+            isCheater = false
         )
     }
 
@@ -168,7 +179,8 @@ class QuizViewModel(val apiService: ApiService) : ViewModel() {
         val questions: MutableList<ApiQuestion>,
         val question: ApiQuestion,
         val index: Int,
-        val totalCorrect: Int
+        val totalCorrect: Int,
+        val isCheater: Boolean
     )
 
 }

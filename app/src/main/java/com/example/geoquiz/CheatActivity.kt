@@ -11,7 +11,9 @@ import android.widget.TextView
 const val EXTRA_ANSWER_SHOWN = "com.example.geoquiz.answer_shown"
 private const val EXTRA_ANSWER_IS_TRUE = "com.example.geoquiz.answer_is_true"
 
-class CheatActivity : AppCompatActivity() {
+class CheatActivity : AppCompatActivity(){
+
+//    private lateinit var quizViewModel: QuizViewModel
 
     private lateinit var answerTextView: TextView
     private lateinit var showAnswerButton: Button
@@ -26,6 +28,7 @@ class CheatActivity : AppCompatActivity() {
         answerTextView = findViewById(R.id.answer_text_view)
         showAnswerButton = findViewById(R.id.show_answer_button)
         showAnswerButton.setOnClickListener {
+//            quizViewModel.userCheat()
             val answerText = when {
                 answerIsTrue -> R.string.true_button
                 else -> R.string.false_button

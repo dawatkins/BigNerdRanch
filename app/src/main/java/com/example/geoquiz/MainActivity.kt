@@ -2,20 +2,17 @@ package com.example.geoquiz
 
 import android.app.Activity
 import android.content.Intent
-import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.os.Parcelable
 import android.text.Html
 import android.util.Log
-import android.view.View
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
+import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.Observer
 import com.example.geoquiz.api.ApiService
-import com.example.geoquiz.api.model.ApiQuestion
-import kotlinx.android.synthetic.main.activity_main.*
 import com.example.geoquiz.api.RestAPIClient
-import java.util.*
-import kotlin.math.round
+import kotlinx.android.synthetic.main.activity_main.*
 
 private const val TAG = "MainActivity"
 private const val KEY_INDEX = "index"
@@ -24,7 +21,7 @@ private const val NUMBER_OF_QUESTIONS = 10
 
 class MainActivity : AppCompatActivity() {
 
-    private lateinit var quizViewModel: QuizViewModel
+    lateinit var quizViewModel: QuizViewModel
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -33,16 +30,6 @@ class MainActivity : AppCompatActivity() {
         quizViewModel = QuizViewModel(apiService)
 
         Log.d(TAG, "onCreate(Bundle?) called")
-
-        if (savedInstanceState != null) {
-            quizViewModel.updateTotalCorrect(savedInstanceState.getInt("CORRECT"))
-            quizViewModel.updateIndex(savedInstanceState.getInt("INDEX"))
-
-//            questions = savedInstanceState.getParcelableArrayList<ApiQuestion>("QUESTION_LIST")?.toMutableList()!!
-            quizViewModel.setupQuestion()
-        } else {
-            quizViewModel.getQuestions()
-        }
 
         val currentIndex = savedInstanceState?.getInt(KEY_INDEX, 0) ?: 0
         quizViewModel.updateIndex(currentIndex)
@@ -110,10 +97,10 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
-        if (requestCode == REQUEST_CODE_CHEAT) {
-            quizViewModel.isCheater =
-                data?.getBooleanExtra(EXTRA_ANSWER_SHOWN, false) ?: false
-        }
+//        if (requestCode == REQUEST_CODE_CHEAT) {
+//            quizViewModel.isCheater =
+//                data?.getBooleanExtra(EXTRA_ANSWER_SHOWN, false) ?: false
+//        }
     }
 
     override fun onStart() {
@@ -135,7 +122,18 @@ class MainActivity : AppCompatActivity() {
         super.onSaveInstanceState(savedInstanceState)
         Log.i(TAG, "onSaveInstanceState")
         savedInstanceState.putInt(KEY_INDEX, quizViewModel.currentViewState().index)
-        savedInstanceState?.putInt("CORRECT", quizViewModel.currentViewState().totalCorrect)
+        savedInstanceState.putInt("CORRECT", quizViewModel.currentViewState().totalCorrect)
+        savedInstanceState.putParcelableArrayList("QUESTIONS", ArrayList<Parcelable>(quizViewModel.currentViewState().questions))
+    }
+
+    override fun onRestoreInstanceState(savedInstanceState: Bundle?) {
+        super.onRestoreInstanceState(savedInstanceState)
+        if (savedInstanceState != null) {
+            quizViewModel.updateState(savedInstanceState.getInt("INDEX"), savedInstanceState.getInt("CORRECT"), savedInstanceState.getParcelableArrayList("QUESTIONS"))
+//            quizViewModel.setupQuestion()
+        } else {
+            quizViewModel.getQuestions()
+        }
     }
 
     override fun onStop() {
