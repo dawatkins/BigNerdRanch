@@ -34,22 +34,26 @@ class MainActivity : AppCompatActivity() {
         val currentIndex = savedInstanceState?.getInt(KEY_INDEX, 0) ?: 0
         quizViewModel.updateIndex(currentIndex)
 
-
+        if(savedInstanceState != null){
+            onRestoreInstanceState(savedInstanceState)
+        } else {
+            quizViewModel.getQuestions()
+        }
         quizViewModel.viewState.observe(this, Observer<QuizViewModel.QuizViewState> {
             render(quizViewModel.currentViewState())
         })
 
         true_button.setOnClickListener {
-            val messageResId = quizViewModel.checkAnswer(true, quizViewModel.currentViewState().correctAnswer)
-            Toast.makeText(this, messageResId, Toast.LENGTH_SHORT).show()
+            val answerResult = quizViewModel.checkAnswer(true)
+            Toast.makeText(this, quizViewModel.makeToast(answerResult), Toast.LENGTH_SHORT).show()
             true_button.isClickable = false
             false_button.isClickable = false
 
         }
 
         false_button.setOnClickListener {
-            val messageResId = quizViewModel.checkAnswer(false, quizViewModel.currentViewState().correctAnswer)
-            Toast.makeText(this, messageResId, Toast.LENGTH_SHORT).show()
+            val answerResult = quizViewModel.checkAnswer(false)
+            Toast.makeText(this, quizViewModel.makeToast(answerResult), Toast.LENGTH_SHORT).show()
             false_button.isClickable = false
             true_button.isClickable = false
         }
@@ -68,8 +72,6 @@ class MainActivity : AppCompatActivity() {
         previous_button.setOnClickListener {
             if (quizViewModel.currentViewState().index > 0) {
                 quizViewModel.decIndex()
-                quizViewModel.setupQuestion()
-                renderResult()
             } else {
                 Toast.makeText(applicationContext, "First question in the list.", Toast.LENGTH_LONG)
                     .show()
@@ -128,9 +130,10 @@ class MainActivity : AppCompatActivity() {
 
     override fun onRestoreInstanceState(savedInstanceState: Bundle?) {
         super.onRestoreInstanceState(savedInstanceState)
+        Log.i(TAG, "onRestoreInstanceState")
         if (savedInstanceState != null) {
-            quizViewModel.updateState(savedInstanceState.getInt("INDEX"), savedInstanceState.getInt("CORRECT"), savedInstanceState.getParcelableArrayList("QUESTIONS"))
-//            quizViewModel.setupQuestion()
+            quizViewModel.updateIndexAndUserTotals(savedInstanceState.getInt("INDEX"), savedInstanceState.getInt("CORRECT"), savedInstanceState.getParcelableArrayList("QUESTIONS"))
+            quizViewModel.setupQuestion()
         } else {
             quizViewModel.getQuestions()
         }

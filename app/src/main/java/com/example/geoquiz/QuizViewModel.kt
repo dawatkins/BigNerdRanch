@@ -8,6 +8,7 @@ import androidx.lifecycle.ViewModel
 import com.example.geoquiz.api.ApiService
 import com.example.geoquiz.api.model.ApiQuestion
 import com.example.geoquiz.api.model.QuestionList
+import com.example.geoquiz.api.model.checkAnswer
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
@@ -32,24 +33,30 @@ class QuizViewModel(val apiService: ApiService) : ViewModel() {
 
     fun currentViewState(): QuizViewState = viewState.value!!
 
-    fun checkAnswer(userAnswer: Boolean, correctAnswer: Boolean): Int {
-        if(currentViewState().isCheater){
-            return R.string.judgment_toast
-        } else {
-            if (userAnswer == correctAnswer) {
-                updateState(
-                    currentViewState().copy(
-                        totalCorrect = currentViewState().totalCorrect + 1,
-                        progressType = ProgressType.Result
-                    )
+    fun checkAnswer(userAnswer: Boolean): Boolean {
+        val checkedAnswer = currentViewState().question.checkAnswer(userAnswer)
+        if (checkedAnswer) {
+            updateState(
+                currentViewState().copy(
+                    totalCorrect = currentViewState().totalCorrect + 1,
+                    progressType = ProgressType.Result
                 )
-                return R.string.correct_toast
-            } else {
-                return R.string.incorrect_toast
-            }
+            )
+            return true
+        } else {
+            return false
         }
     }
-    fun userCheat(){
+
+    fun makeToast(answerResult: Boolean): Int{
+        if(answerResult){
+            return R.string.correct_toast
+        } else {
+            return R.string.incorrect_toast
+        }
+    }
+
+    fun userCheat() {
         updateState(
             currentViewState().copy(
                 isCheater = true
@@ -110,7 +117,7 @@ class QuizViewModel(val apiService: ApiService) : ViewModel() {
         )
     }
 
-    fun updateState(index: Int, totalCorrect: Int, questions: MutableList<ApiQuestion>){
+    fun updateIndexAndUserTotals(index: Int, totalCorrect: Int, questions: MutableList<ApiQuestion>) {
         updateState(
             currentViewState().copy(
                 index = index,
@@ -131,7 +138,8 @@ class QuizViewModel(val apiService: ApiService) : ViewModel() {
     fun decIndex() {
         updateState(
             currentViewState().copy(
-                index = currentViewState().index - 1
+                index = currentViewState().index - 1,
+                progressType = ProgressType.Result
             )
         )
     }
@@ -162,7 +170,7 @@ class QuizViewModel(val apiService: ApiService) : ViewModel() {
         )
     }
 
-    fun resetProgress(){
+    fun resetProgress() {
         viewState.value = currentViewState().copy(
             progressType = ProgressType.NotAsked,
             totalCorrect = 0,

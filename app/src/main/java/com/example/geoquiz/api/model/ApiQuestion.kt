@@ -1,6 +1,7 @@
 package com.example.geoquiz.api.model
 
 import android.os.Parcelable
+import com.example.geoquiz.Question
 import com.google.gson.annotations.SerializedName
 import kotlinx.android.parcel.Parcelize
 
@@ -13,3 +14,5 @@ data class ApiQuestion(
     @SerializedName("correct_answer") val correctAnswer: Boolean = true,
     @SerializedName("incorrect_answer") val incorrectAnswer: List<Boolean> = listOf(false)
 ) : Parcelable
+
+fun ApiQuestion.checkAnswer(userAnswer: Boolean): Boolean = userAnswer == correctAnswer
