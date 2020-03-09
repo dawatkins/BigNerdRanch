@@ -121,7 +121,8 @@ class QuizViewModel(val apiService: ApiService) : ViewModel() {
         updateState(
             currentViewState().copy(
                 index = index,
-                totalCorrect = totalCorrect
+                totalCorrect = totalCorrect,
+                questions = questions
             )
         )
     }
@@ -129,7 +130,7 @@ class QuizViewModel(val apiService: ApiService) : ViewModel() {
     fun incIndex() {
         updateState(
             currentViewState().copy(
-                index = currentViewState().index + 1,
+                index = currentViewState().index.inc(),
                 progressType = ProgressType.Result
             )
         )
@@ -138,7 +139,7 @@ class QuizViewModel(val apiService: ApiService) : ViewModel() {
     fun decIndex() {
         updateState(
             currentViewState().copy(
-                index = currentViewState().index - 1,
+                index = currentViewState().index.dec(),
                 progressType = ProgressType.Result
             )
         )
