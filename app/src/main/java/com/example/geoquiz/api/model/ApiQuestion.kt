@@ -2,6 +2,7 @@ package com.example.geoquiz.api.model
 
 import android.os.Parcelable
 import com.example.geoquiz.Question
+import com.example.geoquiz.R
 import com.google.gson.annotations.SerializedName
 import kotlinx.android.parcel.Parcelize
 
@@ -16,3 +17,11 @@ data class ApiQuestion(
 ) : Parcelable
 
 fun ApiQuestion.checkAnswer(userAnswer: Boolean): Boolean = userAnswer == correctAnswer
+
+fun ApiQuestion.makeToast(userAnswer: Boolean): Int{
+    if(userAnswer)
+        return R.string.correct_toast
+    else
+        return R.string.incorrect_toast
+
+}

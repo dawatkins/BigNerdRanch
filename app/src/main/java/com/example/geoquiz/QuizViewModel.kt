@@ -56,13 +56,13 @@ class QuizViewModel(val apiService: ApiService) : ViewModel() {
         }
     }
 
-    fun userCheat() {
-        updateState(
-            currentViewState().copy(
-                isCheater = true
-            )
-        )
-    }
+//    fun userCheat() {
+//        updateState(
+//            currentViewState().copy(
+//                isCheater = true
+//            )
+//        )
+//    }
 
     fun getQuestions() {
         val fetchQuestionsList = apiService.getQuestions()

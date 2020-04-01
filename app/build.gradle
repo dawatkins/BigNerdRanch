@@ -61,5 +61,5 @@ dependencies {
     androidTestImplementation 'com.android.support.test.espresso:espresso-core:3.0.2'
 
     testImplementation 'io.kotlintest:kotlintest-runner-junit5:3.4.2'
-
+    testImplementation 'io.mockk:mockk:1.9.3'
 }
